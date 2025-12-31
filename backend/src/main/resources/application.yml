@@ -1,0 +1,101 @@
+spring:
+  application:
+    name: availability-tests
+
+  # R2DBC Configuration for reactive PostgreSQL
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:booking}
+    username: ${DB_USER:booking_user}
+    password: ${DB_PASSWORD:booking_pass}
+    pool:
+      initial-size: 10
+      max-size: 50
+      max-idle-time: 30m
+      max-acquire-time: 3s
+      validation-query: SELECT 1
+
+  # Flyway Configuration (uses JDBC for migrations)
+  flyway:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:booking}
+    user: ${DB_USER:booking_user}
+    password: ${DB_PASSWORD:booking_pass}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    enabled: true
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 1000ms
+
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  netty:
+    connection-timeout: 5s
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# Application-specific Configuration
+booking:
+  # Expiry job configuration
+  expiry:
+    fixed-delay: 10000  # Run every 10 seconds
+    initial-delay: 30000  # Wait 30 seconds before first run
+
+  # Reservation configuration
+  reservation:
+    ttl-seconds: 60  # Reservations expire after 1 minute
+
+  # Cache configuration
+  cache:
+    local:
+      max-size: 10000
+      ttl-seconds: 2
+    redis:
+      shard-availability-ttl-seconds: 5
+      event-metadata-ttl-seconds: 60
+
+  # Sharding configuration
+  sharding:
+    default-shards: 10
+    retry-attempts: 3
+    retry-backoff-ms: 100
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.booking: DEBUG
+    org.springframework.r2dbc: DEBUG
+    org.springframework.data.r2dbc: DEBUG
+    io.r2dbc.postgresql: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
